@@ -1,10 +1,10 @@
-import { Devvit, useState } from '@devvit/public-api';
+import { Devvit, useState, useEffect } from '@devvit/public-api';
+import { fetchStoryTopics } from './fetchStoryTopics.ts';
 
 Devvit.configure({
   redditAPI: true,
 });
 
-// Add a menu item to the subreddit menu for instantiating the new experience post
 Devvit.addMenuItem({
   label: 'Start Story Voting',
   location: 'subreddit',
@@ -27,36 +27,31 @@ Devvit.addMenuItem({
   },
 });
 
-// Story topic type
 type StoryTopic = {
   title: string;
   description: string;
   votes: number;
 };
 
-// Add a post type definition for the voting cards
 Devvit.addCustomPostType({
   name: 'Story Topic Vote',
   height: 'regular',
   render: (context) => {
-    const [topics, setTopics] = useState<StoryTopic[]>([
-      {
-        title: 'Lost in Cyberspace',
-        description: 'A hacker gets trapped in a virtual world where the internet becomes a physical maze.',
-        votes: 0
-      },
-      {
-        title: 'The Last Library',
-        description: 'In a future where books are banned, a group protects the last remaining library.',
-        votes: 0
-      },
-      {
-        title: 'Time Tourist',
-        description: 'A malfunctioning time machine sends tourists to random moments in history.',
-        votes: 0
-      }
-    ]);
+    const [topics, setTopics] = useState<StoryTopic[]>([]);
     const [hasVoted, setHasVoted] = useState(false);
+
+    useEffect(() => {
+      async function loadTopics() {
+        try {
+          // const aiTopics = await fetchStoryTopics();
+          const aiTopics: StoryTopic[] = await fetchStoryTopics();
+          setTopics(aiTopics.map((topic) => ({ ...topic, votes: 0 })));
+        } catch (error) {
+          console.error("Failed to fetch story topics:", error);
+        }
+      }
+      loadTopics();
+    }, []);
 
     const handleVote = (index: number) => {
       if (hasVoted) return;
@@ -81,7 +76,6 @@ Devvit.addCustomPostType({
               padding="medium" 
               gap="small"
               width="33%"
-              // border="solid"
               borderColor="#333333"
               onPress={() => handleVote(index)}
               grow
@@ -95,21 +89,9 @@ Devvit.addCustomPostType({
             </vstack>
           ))}
         </hstack>
-
-        {hasVoted && (
-          <button onPress={() => context.ui.showToast(`Winning topic: ${getWinningTopic(topics).title}`)}>
-            Show Winning Topic
-          </button>
-        )}
       </vstack>
     );
   },
 });
-
-function getWinningTopic(topics: StoryTopic[]): StoryTopic {
-  return topics.reduce((prev, current) => 
-    (prev.votes > current.votes) ? prev : current
-  );
-}
 
 export default Devvit;
