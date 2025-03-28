@@ -5,7 +5,7 @@ import dotenv from "dotenv";
 export async function fetchStoryTopics(): Promise<{ title: string; description: string }[]> {
     console.log("Fetching story topics...");
   
-    const apiKey = process.env.OPENAI_API_KEY;
+    const apiKey = "";
 
     if (!apiKey) {
         console.error("OpenAI API key is missing! Make sure you have a .env file with OPENAI_API_KEY.");
