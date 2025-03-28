@@ -1,8 +1,9 @@
-import { Devvit, useState, useEffect } from '@devvit/public-api';
+import { Devvit, useState } from '@devvit/public-api';
 import { fetchStoryTopics } from './fetchStoryTopics.ts';
 
 Devvit.configure({
   redditAPI: true,
+  http: true,
 });
 
 Devvit.addMenuItem({
@@ -11,19 +12,27 @@ Devvit.addMenuItem({
   forUserType: 'moderator',
   onPress: async (_event, context) => {
     const { reddit, ui } = context;
-    ui.showToast("Creating story topic vote post...");
+    ui.showToast("Fetching story topics...");
 
-    const subreddit = await reddit.getCurrentSubreddit();
-    const post = await reddit.submitPost({
-      title: 'Vote for our next story theme!',
-      subredditName: subreddit.name,
-      preview: (
-        <vstack height="100%" width="100%" alignment="middle center">
-          <text size="large">Loading story vote...</text>
-        </vstack>
-      ),
-    });
-    ui.navigateTo(post);
+    try {
+      const aiTopics = await fetchStoryTopics();
+
+      const subreddit = await reddit.getCurrentSubreddit();
+      const post = await reddit.submitPost({
+        title: 'Vote for our next story theme!',
+        subredditName: subreddit.name,
+        preview: (
+          <vstack height="100%" width="100%" alignment="middle center">
+            <text size="large">Loading story vote...</text>
+          </vstack>
+        ),
+      });
+
+      ui.navigateTo(post);
+    } catch (error) {
+      console.error("Failed to fetch story topics:", error);
+      ui.showToast("Failed to fetch story topics. Try again later.");
+    }
   },
 });
 
@@ -36,26 +45,27 @@ type StoryTopic = {
 Devvit.addCustomPostType({
   name: 'Story Topic Vote',
   height: 'regular',
-  render: (context) => {
+  render: async (context) => {
     const [topics, setTopics] = useState<StoryTopic[]>([]);
     const [hasVoted, setHasVoted] = useState(false);
 
-    useEffect(() => {
-      async function loadTopics() {
-        try {
-          // const aiTopics = await fetchStoryTopics();
-          const aiTopics: StoryTopic[] = await fetchStoryTopics();
-          setTopics(aiTopics.map((topic) => ({ ...topic, votes: 0 })));
-        } catch (error) {
-          console.error("Failed to fetch story topics:", error);
-        }
+    async function loadTopics() {
+      console.log("Loading story topics..."); // DEBUGGING
+      try {
+        const aiTopics = await fetchStoryTopics();
+        console.log("Story topics fetched:", aiTopics); // DEBUGGING
+        setTopics(aiTopics.map((topic) => ({ ...topic, votes: 0 })));
+        console.log("Topics state updated"); // DEBUGGING
+      } catch (error) {
+        console.error("Failed to fetch story topics:", error);
       }
-      loadTopics();
-    }, []);
+    }
+
+    await loadTopics(); // Fetch topics before rendering
 
     const handleVote = (index: number) => {
       if (hasVoted) return;
-      
+
       const newTopics = [...topics];
       newTopics[index].votes += 1;
       setTopics(newTopics);
@@ -67,7 +77,7 @@ Devvit.addCustomPostType({
       <vstack height="100%" width="100%" gap="medium" padding="medium">
         <text style="heading" size="xlarge" weight="bold">Choose Our Next Adventure!</text>
         <text>Vote for the story theme you want to see developed:</text>
-        
+
         <hstack gap="medium" width="100%">
           {topics.map((topic, index) => (
             <vstack 
